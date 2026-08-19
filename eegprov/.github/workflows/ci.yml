@@ -1,0 +1,38 @@
+# Lives inside the package directory so it travels with it. GitHub only reads
+# workflows from `.github/workflows` at the repository root, so this stays
+# inert until the package becomes its own repo — which is the intent.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Test
+        run: pytest -q
+
+      - name: Smoke-test the CLI end to end
+        run: |
+          eegprov demo ./_archive
+          eegprov scan ./_archive
+          eegprov archive ./_archive -o ./_report
+          test -f ./_report/inventory.json
+          test "$(find ./_report/cards -name '*.md' | wc -l)" -eq 6
