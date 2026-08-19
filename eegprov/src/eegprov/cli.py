@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import bids, inventory, qc, report, synth
+from . import bids, inventory, paradigm, qc, report, synth
 
 
 def _demo(args: argparse.Namespace) -> int:
@@ -92,16 +92,22 @@ def _scan(args: argparse.Namespace) -> int:
     return 0
 
 
+def _analyze_one(rec: inventory.Recording, no_qc: bool = False):
+    """Signal-level passes for one readable recording. Reads the file once."""
+    data, ch_names, sfreq, desc, onsets = inventory.load_recording(Path(rec.path))
+    q = None if no_qc else qc.analyze(data, ch_names, sfreq)
+    pd = paradigm.analyze(desc, onsets, data, ch_names, sfreq)
+    return q, pd
+
+
 def _card(args: argparse.Namespace) -> int:
     path = Path(args.file)
     rec = inventory.read_header(path)
     if not rec.readable:
         print(report.card(rec))
         return 1
-    data, ch_names, sfreq = inventory.load_data_uv(path)
-    q = qc.analyze(data, ch_names, sfreq)
-    bd = bids.draft(rec, q)
-    print(report.card(rec, q, bd))
+    q, pd = _analyze_one(rec)
+    print(report.card(rec, q, bids.draft(rec, q), pd))
     return 0
 
 
@@ -115,16 +121,15 @@ def _archive(args: argparse.Namespace) -> int:
 
     drafts, cards = [], []
     for rec in records:
-        q = None
-        if rec.readable and not args.no_qc:
+        q = pd = None
+        if rec.readable:
             try:
-                data, ch_names, sfreq = inventory.load_data_uv(Path(rec.path))
-                q = qc.analyze(data, ch_names, sfreq)
-            except Exception as exc:  # noqa: BLE001
-                rec.warnings.append(f"QC failed: {type(exc).__name__}: {exc}")
+                q, pd = _analyze_one(rec, no_qc=args.no_qc)
+            except Exception as exc:  # noqa: BLE001 — a failed pass is reportable
+                rec.warnings.append(f"analysis failed: {type(exc).__name__}: {exc}")
         bd = bids.draft(rec, q)
         drafts.append(bd)
-        cards.append((rec, report.card(rec, q, bd)))
+        cards.append((rec, report.card(rec, q, bd, pd)))
 
     summary = bids.summarize(drafts)
     overview = report.archive_summary(records, summary)

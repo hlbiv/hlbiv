@@ -5,7 +5,7 @@ quality record, and a draft BIDS-EEG layout — with everything it could not
 determine stated explicitly rather than guessed.
 """
 
-from . import bids, inventory, qc, report, synth
+from . import bids, inventory, paradigm, qc, report, synth
 
 __version__ = "0.1.0"
-__all__ = ["bids", "inventory", "qc", "report", "synth"]
+__all__ = ["bids", "inventory", "paradigm", "qc", "report", "synth"]

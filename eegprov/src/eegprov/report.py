@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from .bids import BidsDraft
 from .inventory import Recording
+from .paradigm import ParadigmReport
 from .qc import QCReport
 
 
@@ -20,7 +21,7 @@ def _fmt(value, suffix: str = "", dash: str = "unknown") -> str:
 
 
 def card(rec: Recording, qc: QCReport | None = None,
-         bd: BidsDraft | None = None) -> str:
+         bd: BidsDraft | None = None, pd: ParadigmReport | None = None) -> str:
     """One recording, as markdown."""
     lines = [f"# {rec.filename}", "", f"`{rec.path}`", ""]
 
@@ -47,6 +48,8 @@ def card(rec: Recording, qc: QCReport | None = None,
         "",
     ]
 
+    if pd is not None:
+        lines += _paradigm_section(pd)
     if qc is not None:
         lines += _qc_section(qc)
     if bd is not None:
@@ -54,6 +57,39 @@ def card(rec: Recording, qc: QCReport | None = None,
     if rec.warnings:
         lines += ["## Warnings", ""] + [f"- {w}" for w in rec.warnings] + [""]
     return "\n".join(lines)
+
+
+def _paradigm_section(pd: ParadigmReport) -> list[str]:
+    lines = ["## Paradigm", "",
+             f"- inferred: **{pd.paradigm}**",
+             f"- confidence: {pd.confidence}",
+             f"- events: {pd.n_events}"]
+    if pd.classes:
+        breakdown = ", ".join(f"{k} {v} ({pd.class_proportions[k]:.0%})"
+                              for k, v in pd.classes.items())
+        lines.append(f"- classes: {breakdown}")
+    if pd.median_isi_s:
+        jitter = f", CV {pd.isi_cv}" if pd.isi_cv is not None else ""
+        lines.append(f"- interval: {pd.median_isi_s:.3f} s median{jitter}")
+    lines.append("")
+
+    if pd.evoked:
+        e = pd.evoked
+        verdict = "confirmed" if e.response_detected else "NOT CONFIRMED"
+        lines += [f"### Label verification — {verdict}", "",
+                  f"{e.note}", "",
+                  f"- averaged over: {', '.join(e.channel_basis)}",
+                  f"- trials: {e.n_trials}"]
+        if e.peak_amplitude_uv is not None:
+            lines.append(f"- peak: {e.peak_amplitude_uv} uV at "
+                         f"{e.peak_latency_s * 1000:.0f} ms")
+        if e.p_value is not None:
+            lines.append(f"- permutation p: {e.p_value}")
+        lines.append("")
+
+    if pd.flags:
+        lines += ["### Paradigm flags", ""] + [f"- {f}" for f in pd.flags] + [""]
+    return lines
 
 
 def _qc_section(qc: QCReport) -> list[str]:

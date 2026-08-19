@@ -238,12 +238,25 @@ def read_header(path: Path) -> Recording:
     return rec
 
 
-def load_data_uv(path: Path) -> tuple[np.ndarray, list[str], float]:
-    """Load full signal in microvolts, for the QC pass."""
+def load_recording(path: Path) -> tuple[np.ndarray, list[str], float,
+                                        list[str], np.ndarray]:
+    """Load signal (microvolts) and events in one read.
+
+    Returns (data, channel names, sampling rate, event labels, event onsets).
+    Reading once matters: the archive pass touches every file, and these are
+    the largest reads in the tool."""
     reader = READERS[Path(path).suffix.lower()]
     raw = reader(str(path), preload=True, verbose="ERROR")
     raw.pick("eeg")
-    return raw.get_data() * 1e6, list(raw.ch_names), float(raw.info["sfreq"])
+    ann = raw.annotations
+    return (raw.get_data() * 1e6, list(raw.ch_names), float(raw.info["sfreq"]),
+            list(ann.description), np.asarray(ann.onset, dtype=float))
+
+
+def load_data_uv(path: Path) -> tuple[np.ndarray, list[str], float]:
+    """Signal only, for callers that do not need events."""
+    data, ch_names, sfreq, _, _ = load_recording(path)
+    return data, ch_names, sfreq
 
 
 def scan(root: Path, recursive: bool = True) -> list[Recording]:
