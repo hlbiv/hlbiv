@@ -22,7 +22,10 @@ def _demo(args: argparse.Namespace) -> int:
     a session with no event markers, and a file no reader can open."""
     out = Path(args.directory)
     out.mkdir(parents=True, exist_ok=True)
-    ext = ".edf" if args.edf else ".raw.fif"
+    # EDF by default when it can be written — that is what legacy archives
+    # actually hold, and exercising that reader is the point of the demo.
+    # write_session falls back to FIF on its own if edfio is missing.
+    ext = ".raw.fif" if args.fif else ".edf"
 
     sessions = [
         # Clean, well-named — should convert with only human-only fields open.
@@ -163,8 +166,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     d = sub.add_parser("demo", help="generate a synthetic messy archive")
     d.add_argument("directory")
-    d.add_argument("--edf", action="store_true",
-                   help="write EDF instead of FIF (needs the edfio package)")
+    d.add_argument("--fif", action="store_true",
+                   help="write FIF instead of EDF")
     d.set_defaults(func=_demo)
 
     s = sub.add_parser("scan", help="inventory recordings and infer entities")

@@ -275,6 +275,11 @@ def analyze(descriptions: list[str], onsets_s: np.ndarray,
             sfreq: float | None = None) -> ParadigmReport:
     """Infer the paradigm, and verify the rare class against the signal."""
     onsets_s = np.asarray(onsets_s, dtype=float)
+    # Readers hand back numpy string scalars. They behave like str until they
+    # reach a report, where they serialise as np.str_('target') and break
+    # round-tripping through JSON.
+    descriptions = [str(d) for d in descriptions]
+
     classes: dict[str, int] = {}
     for d in descriptions:
         classes[d] = classes.get(d, 0) + 1

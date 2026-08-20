@@ -16,7 +16,10 @@ dependencies = [
 
 [project.optional-dependencies]
 edf = ["edfio>=0.4"]
-dev = ["pytest>=7.4"]
+# edfio is a test dependency, not just an extra: EDF is the dominant legacy
+# archive format, so the reader path that matters most in the field has to be
+# exercised against real EDF files rather than only FIF.
+dev = ["pytest>=7.4", "edfio>=0.4"]
 
 [project.scripts]
 eegprov = "eegprov.cli:main"

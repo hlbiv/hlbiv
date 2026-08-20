@@ -93,6 +93,9 @@ def test_demo_then_archive_runs_end_to_end(tmp_path, capsys):
 
     inventory_json = json.loads((out_dir / "inventory.json").read_text())
     assert inventory_json["summary"]["total"] == 6  # 5 readable + 1 .dat
+    # The whole report must survive JSON round-tripping — numpy scalars
+    # leaking out of a reader would break exactly here.
+    json.dumps(inventory_json)
     assert (out_dir / "inventory.md").exists()
     assert len(list((out_dir / "cards").glob("*.md"))) == 6
 

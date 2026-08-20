@@ -30,7 +30,7 @@ short, specific list of questions for whoever ran the study.
 ## Install
 
 ```bash
-pip install -e ".[dev]"      # add ".[edf]" for EDF export in the demo
+pip install -e ".[dev]"
 ```
 
 Requires Python 3.10+. Depends on MNE, NumPy, and SciPy.
@@ -137,14 +137,28 @@ test cannot catch this one; only the filter can. The P300 is under 10 Hz, so
 pytest
 ```
 
-51 tests. Every quality check is tested by injecting the defect it is meant to
+57 tests. Every quality check is tested by injecting the defect it is meant to
 catch — a dead electrode, a noisy temporal channel, a drifting reference,
 50 Hz versus 60 Hz mains, absent blinks, an oddball sequence with and without
 a real P300 behind its labels. `synth.py` generates all of it, so the suite
 needs no downloads, no credentials, and no real recordings.
 
+The suite runs against **EDF as well as FIF**, because EDF is what legacy
+archives actually hold and it encodes differently — int16 samples with
+per-channel physical/digital scaling, fixed-width header fields, events in a
+separate annotation channel. `test_edf_format.py` asserts the *conclusions*
+survive that round trip, not just the bytes: a dead electrode at ~0.001 µV is
+far below one quantisation step and must still read as flat rather than as
+rounded-to-zero noise.
+
 ## Status
 
-Working, tested, and validated only against synthetic data. The next step is a
-pass over a public corpus — Temple TUH or OpenNeuro — which is what the
-thresholds actually need to be calibrated against.
+Working and tested, but validated only against synthetic signals — including
+through a real EDF encode/decode round trip. That proves each detector fires
+on the defect it targets and that nothing is lost to EDF quantisation; it says
+nothing about false-positive rates on real recordings.
+
+The next step is a calibration pass over a public corpus — Temple TUH or
+OpenNeuro, both openly released for exactly this purpose. That is what the
+thresholds actually need to be set against, and it needs a machine with
+network access to those hosts.
